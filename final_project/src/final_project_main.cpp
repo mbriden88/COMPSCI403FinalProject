@@ -4,6 +4,11 @@
 #include <std_msgs/String.h>
 #include <sstream>
 
+//Robot Attributes
+float robotRadius = 0.18;
+float robotHeight = 0.36;
+float epsilon = 0.15;
+
 // Kinect Intrinsics
 float a = 3.008;
 float b = -0.002745;
@@ -36,8 +41,16 @@ void depthImageToPointCloud(sensor_msgs::Image image, sensor_msgs::PointCloud &p
   }
 }
 
-void changePointCloudToReferenceFrameOfRobt(){
-
+void changePointCloudToReferenceFrameOfRobot(sensor_msgs::PointCloud point_cloud, vector<Vector3f> &filtered_point_cloud){
+	//TODO: potentially need to get R and T from a service
+	Matrix3f R = MatrixXf::Identity(3,3);
+  Vector3f T(0.13, 0, 0.305);
+	for (size_t i = 0; i < point_cloud.size(); ++i) {
+    Vector3f point = R * point_cloud[i] + T;
+    if(point(2) < robotHeight && point(2) > epsilon){
+      filtered_point_cloud.push_back(point);
+    }
+  }
 }
 
 void findPerson(){
@@ -53,11 +66,12 @@ void avoidObstacles(){
 }
 
 void PersonFollowerCallback(const sensor_msgs::Image& depth_image){
+	// change depth image to point cloud
 	sensor_msgs::PointCloud point_cloud;
 	depthImageToPointCloud(depth_image, point_cloud);
-
-
-
+	// change point cloud to reference frame of robot
+  vector<Vector3f> filtered_point_cloud;
+  changePointCloudToReferenceFrameOfRobot(point_cloud, filtered_point_cloud);
 }
 
 int main(int argc, char **argv) {
