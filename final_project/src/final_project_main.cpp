@@ -54,15 +54,15 @@ void changePointCloudToReferenceFrameOfRobot(sensor_msgs::PointCloud point_cloud
 }
 
 void findPerson(){
-
+  //TODO: use RANSAC plane fitting to find person and return point in middle of plane
 }
 
 void calculatePathToPerson(){
-
+  //TODO: calculate the free path length to the point representing the person
 }
 
 void avoidObstacles(){
-
+  //TODO: dynamic window approach to avoid obstacles and return best velocity commands
 }
 
 void PersonFollowerCallback(const sensor_msgs::Image& depth_image){
