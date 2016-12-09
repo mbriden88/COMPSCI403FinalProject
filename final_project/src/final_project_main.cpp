@@ -81,7 +81,6 @@ int main(int argc, char **argv) {
   ros::Subscriber person_follower_subscriber =
     n.subscribe("/Cobot/Kinect/Depth", 1, PersonFollowerCallback);
 
-<<<<<<< HEAD
 	// deal with input
 	ros::ServiceServer pointCloudFromDepthImage = n.advertiseService()
 	ros::ServiceServer changeToRobotReference = n.advertiseService()
