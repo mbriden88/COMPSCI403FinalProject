@@ -10,6 +10,24 @@ int main(int argc, char **argv) {
 
 	//services n shit
 
+	// deal with input
+	ros::ServiceServer pointCloudFromDepthImage = n.advertiseService()
+	ros::ServiceServer changeToRobotReference = n.advertiseService()
+
+	// identify obstacles
+	ros::ServiceServer identifyObstacles = n.advertiseService()
+
+	// find person to follow
+	ros::ServiceServer findPerson = n.advertiseService()
+
+	// determine if person is moving
+	ros::ServiceServer checkPersonMotion = n.advertiseService()
+
+	// follow person - main function
+	ros:: ServiceServer followPerson = n.advertiseService()
+
+
+
 	ros::spin();
 
 	return 0;
