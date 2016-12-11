@@ -17,6 +17,7 @@ set(CMAKE_TARGET_DEFINITIONS_CXX
 # The include file search paths:
 set(CMAKE_CXX_TARGET_INCLUDE_PATH
   "/home/robot/kinetic_workspace/sandbox/project/COMPSCI403FinalProject/final_project/include"
+  "/opt/ros/kinetic/include"
   "/usr/src/gtest/include"
   "/usr/src/gtest"
   )
