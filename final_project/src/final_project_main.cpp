@@ -36,6 +36,7 @@ float v_coeff = 1;
 float w_coeff = -0.003; // -5
 float free_path_coeff = 1; //10
 
+Odometry last_odometry;
 // last known velocities
 Vector2f lastVel(0.0, 0.0);
 
@@ -333,9 +334,6 @@ void calculatePathToPerson(Point32 goalState, currentVW){
 
 }
 
-void avoidObstacles(){
-  //TODO: dynamic window approach to avoid obstacles and return best velocity commands
-}
 
 void PersonFollowerCallback(const sensor_msgs::Image& depth_image){
   // change depth image to point cloud
@@ -344,6 +342,10 @@ void PersonFollowerCallback(const sensor_msgs::Image& depth_image){
   // change point cloud to reference frame of robot
   vector<Vector3f> filtered_point_cloud;
   changePointCloudToReferenceFrameOfRobot(point_cloud, filtered_point_cloud);
+}
+
+void OdometryCallback(const nav_msgs::Odometry& odometry) {
+  last_odometry = odometry;
 }
 
 int main(int argc, char **argv) {
@@ -372,6 +374,7 @@ int main(int argc, char **argv) {
   ros::ServiceServer service1 = n.advertiseService(
       "/COMPSCI403/GetCommandVel", getBestCommandService);
 
+  ros::Subscriber odometry_subscriber = n.subscribe("/odom", 1, OdometryCallback);
 
 
 	ros::spin();
