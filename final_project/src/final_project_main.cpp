@@ -42,6 +42,9 @@ Vector2f lastVel(0.0, 0.0);
 // last known person position
 Vector2f lastPersonPosition(0.0, 0.0);
 
+// ideal distance to maintain from human in meters
+float idealDistance = 1.0;
+
 void depthImageToPointCloud(sensor_msgs::Image image, sensor_msgs::PointCloud &point_cloud){
   point_cloud.header = image.header;
   for (unsigned int y = 0; y < image.height; ++y) {
@@ -178,12 +181,105 @@ void GetBestCommand(const MatrixXf& win_v, const MatrixXf& win_w, const vector<V
   index_best = current_best_index;
 }
 
+
+//*************************************************************************************
+// *************** Function taken from CS403 Assignment5 solution code ****************
+// *************** (with some modification) *******************************************
+//*************************************************************************************
+bool GetCommandVelService(
+    compsci403_assignment5::GetCommandVelSrv::Request& req,
+    compsci403_assignment5::GetCommandVelSrv::Response& res) {
+
+  vector<Vector3f> point_cloud;
+  // The input v0 and w0 are each vectors. The x component of v0 is the linear 
+  // velocity towards forward direction and the z component of w0 is the
+  // rotational velocity around the z axis, i.e. around the center of rotation
+  // of the robot and in counter-clockwise direction
+  const Vector2f V(req.v0.x, req.w0.z);
+
+  for (unsigned int y = 0; y < req.Image.height; ++y) {
+    for (unsigned int x = 0; x < req.Image.width; ++x) {
+      // Add code here to only process only every nth pixel
+
+      uint16_t byte0 = req.Image.data[2 * (x + y * req.Image.width) + 0];
+      uint16_t byte1 = req.Image.data[2 * (x + y * req.Image.width) + 1];
+      if (!req.Image.is_bigendian) {
+        std::swap(byte0, byte1);
+      }
+      // Combine the two bytes to form a 16 bit value, and disregard the
+      // most significant 4 bits to extract the lowest 12 bits.
+      const uint16_t raw_depth = ((byte0 << 8) | byte1) & 0x7FF;
+      // Reconstruct 3D point from x, y, raw_depth using the camera intrinsics and add it to your point cloud.
+
+      float X;
+      float Y;
+      float Z;
+
+      Get3DPointFromDisparity(x, y, raw_depth, &X, &Y, &Z);
+      Vector3f point(Z, -X, Y);
+      point_cloud.push_back(point);
+    }
+  }
+
+  // Filter the point cloud to remove the ground 
+  Matrix3f R = MatrixXf::Identity(3,3);
+  Vector3f T(0, 0, 0);
+  vector<Vector3f> filtered_point_cloud;
+  ObstaclePointCloudHelper(R, T, point_cloud, filtered_point_cloud);
+
+  // Use your code from part 3 to convert the point cloud to a laser scan
+  vector<float> ranges;
+  PointCloudToLaserScanHelper(filtered_point_cloud, ranges);
+
+  // Convert the laser scan to 2D points in cartesian coordinate system
+  vector<Vector2f> obstacles;
+  LaserScanToPoint(ranges, obstacles);
+
+
+  // Implement dynamic windowing approach to find the best velocity command for next time step
+  int win_size = 41;
+  MatrixXf win_v(win_size, win_size);
+  MatrixXf win_w(win_size, win_size);
+  MatrixXf scores(win_size, win_size);
+  MatrixXd is_admissible(win_size, win_size);
+  Vector2f index_best;
+  InitializeDynamicWindow(win_v, win_w, V);
+  GetBestCommand(win_v, win_w, obstacles, scores, is_admissible, index_best);
+
+
+  // Return the best velocity command
+  // Cv is of type Point32 and its x component is the linear velocity towards forward direction
+  // you do not need to fill its other components
+  // Take the best velocity based on the cost function contingent upon there has been any admissible velocities
+  if(index_best(0) != -1) 
+    res.Cv.x = win_v(index_best(0), index_best(1));
+  else 
+    res.Cv.x = 0;
+  
+  // Cw is of type Point32 and its z component is the rotational velocity around z axis
+  // you do not need to fill its other components
+  if(index_best(0) != -1) 
+    res.Cw.z = win_w(index_best(0), index_best(1));
+  else
+    res.Cw.z = 0; 
+
+  return true;
+}
+
+
+
 float getScore(const Vector2f& vel, const float v_coeff, const float w_coeff, const float free_path_coeff, const Vector2f& person_position) {
   float angle = atan2(person_position(1), person_position(0));
-  Vector2f goalState = ;
+  Vector2f goalState = goalState(person_position, angle);
 
   return (v_coeff * vel(0)) + (w_coeff * fabs(vel(1) - angle)) + (free_path_coeff * free_path_length);
 
+}
+
+Vector2f getGoalState(const Vector2f& person_position, const angle) {
+  float personMag = sqrt(person_position(0) * person_position(0) + person_position(1) * person_position(1));
+  float goalStateMag = personMag - idealDistance;
+  return Vector2f(cos(angle) * goalStateMag, sin(angle) * goalStateMag);
 }
 
 void changePointCloudToReferenceFrameOfRobot(sensor_msgs::PointCloud point_cloud, vector<Vector3f> &filtered_point_cloud){
@@ -245,7 +341,8 @@ int main(int argc, char **argv) {
 	// // follow person - main function
 	// ros:: ServiceServer followPerson = n.advertiseService()
 
-  ros::ServiceServer getBestCommandService = n.advertiseService();
+  ros::ServiceServer service1 = n.advertiseService(
+      "/COMPSCI403/GetCommandVel", getBestCommandService);
 
 
 
