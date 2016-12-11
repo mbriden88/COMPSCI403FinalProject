@@ -1,0 +1,20 @@
+<package>
+  <description brief="final_project">
+
+     COMPSCI 403 Fall 2016 Final Project
+
+  </description>
+  <author>Matt Briden</author>
+  <license>LGPLv3.0</license>
+  <review status="unreviewed" notes=""/>
+  <url></url>
+  <depend package="std_msgs"/>
+  <depend package="sensor_msgs"/>
+  <depend package="roscpp"/>
+  <depend package="rospy"/>
+  <depend package="visualization_msgs"/>
+  <build_depend>OpenCV</build_depend>
+
+</package>
+
+
