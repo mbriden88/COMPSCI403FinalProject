@@ -270,16 +270,44 @@ bool GetCommandVelService(
 
 float getScore(const Vector2f& vel, const float v_coeff, const float w_coeff, const float free_path_coeff, const Vector2f& person_position) {
   float angle = atan2(person_position(1), person_position(0));
-  Vector2f goalState = goalState(person_position, angle);
-
+  Vector2f goalState = goalState(vel, person_position, angle);
   return (v_coeff * vel(0)) + (w_coeff * fabs(vel(1) - angle)) + (free_path_coeff * free_path_length);
 
 }
 
-Vector2f getGoalState(const Vector2f& person_position, const angle) {
+Vector2f getGoalState(const Vector2f& vel, const Vector2f& person_position, const angle) {
+
   float personMag = sqrt(person_position(0) * person_position(0) + person_position(1) * person_position(1));
   float goalStateMag = personMag - idealDistance;
-  return Vector2f(cos(angle) * goalStateMag, sin(angle) * goalStateMag);
+  Vector2f goalState = (cos(angle) * goalStateMag, sin(angle) * goalStateMag);
+  float pathLength;
+  if (FreePathLength(&pathLength, goalState, vel)) {
+    // if there is an obstacle in the way
+    float goalAngleRelativeToPerson = (angle > M_PI) ? (angle - M_PI) : (angle + M_PI);
+    // try other points on the circle
+    for (int i = 1; i < 11; i++) {
+      // angle to new point on circle in positive direction
+      float newAngle = goalAngleRelativeToPerson + (i * M_PI / 10);
+      goalState = (cos(newAngle) * idealDistance, sin(newAngle) * idealDistance) + person_position;
+      if (!FreePathLength(&pathLength, goalState, vel)) {
+        return goalState;
+      }
+      // check in negative direction
+      float newAngle = goalAngleRelativeToPerson - (i * M_PI / 10);
+      goalState = (cos(newAngle) * idealDistance, sin(newAngle) * idealDistance) + person_position;
+      if (!FreePathLength(&pathLength, goalState, vel)) {
+        return goalState;
+      }
+      // if there is no clear path to the circle around the person, attempt to bypass
+      // the obstacle by making the person the goal and relying on optimization function
+      return person_position;
+    }
+
+  }
+  else {
+    // if there is a free path to the ideal point on the circle
+    return goalState;
+  }
 }
 
 void changePointCloudToReferenceFrameOfRobot(sensor_msgs::PointCloud point_cloud, vector<Vector3f> &filtered_point_cloud){
