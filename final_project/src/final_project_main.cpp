@@ -99,7 +99,7 @@ bool FreePathLength(float* free_path_length, const Vector2f& point, const Vector
   *free_path_length = gMaxRange;
 
   if(vel(1) == 0){
-    *free_path_length = point(0) - gRobotRadius;
+    *free_path_length = point(0) - robotRadius;
     is_obstacle = true;
     return is_obstacle;
   }
@@ -111,12 +111,12 @@ bool FreePathLength(float* free_path_length, const Vector2f& point, const Vector
   float dist_to_center = sqrt(center_to_obstacle(0) * center_to_obstacle(0) + center_to_obstacle(1) * center_to_obstacle(1));
 
   
-  if(dist_to_center <= (R + gRobotRadius) && dist_to_center >= (R - gRobotRadius)){
+  if(dist_to_center <= (R + robotRadius) && dist_to_center >= (R - robotRadius)){
     is_obstacle = true;
     float obstacle_angle = atan2(center_to_obstacle(1), center_to_obstacle(0));
     *free_path_length = (obstacle_angle < 0)?( M_PI/2 + obstacle_angle) * R: ( M_PI/2 - obstacle_angle) * R;
     float delta = fabs(dist_to_center - R);
-    float correction = sqrt(gRobotRadius * gRobotRadius - delta * delta);
+    float correction = sqrt(robotRadius * robotRadius - delta * delta);
     *free_path_length -= correction;
   }
 
