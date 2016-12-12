@@ -1,12 +1,12 @@
 //  Some code taken from Joydeep Biswas solution code for assignment 5, CS403.
 //  These functions are marked as such.
 
-
 #include <algorithm>
 #include <iostream>
 #include <ros/ros.h>
 #include <std_msgs/String.h>
 #include <sstream>
+#include <math.h>
 
 #include <eigen3/Eigen/Dense>
 #include <geometry_msgs/Point32.h>
@@ -17,6 +17,26 @@
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
 #include <visualization_msgs/Marker.h>
+
+#include <opencv2/features2d.hpp>
+
+using Eigen::Matrix3f;
+using Eigen::MatrixXf;
+using Eigen::MatrixXd;
+using Eigen::Vector3f;
+using Eigen::Vector2f;
+using geometry_msgs::Point32;
+using geometry_msgs::Point;
+using geometry_msgs::Twist;
+using sensor_msgs::LaserScan;
+using sensor_msgs::PointCloud;
+using std::cout;
+using std::vector;
+using cv::Algorithm;
+using cv::Feature2D;
+using cv::SimpleBlobDetector;
+using namespace std;
+using namespace cv;
 
 //Robot Attributes
 float robotRadius = 0.18;
@@ -312,6 +332,7 @@ Vector2f getGoalState(const Vector2f& vel, const Vector2f& person_position, cons
 }
 
 void changePointCloudToReferenceFrameOfRobot(sensor_msgs::PointCloud point_cloud, vector<Vector3f> &filtered_point_cloud){
+
   //TODO: potentially need to get R and T from a service
   Matrix3f R = MatrixXf::Identity(3,3);
   Vector3f T(0.13, 0, 0.305);
@@ -338,6 +359,7 @@ void calculatePathToPerson(Point32 goalState, currentVW){
 void PersonFollowerCallback(const sensor_msgs::Image& depth_image){
   // change depth image to point cloud
   sensor_msgs::PointCloud point_cloud;
+
   depthImageToPointCloud(depth_image, point_cloud);
   // change point cloud to reference frame of robot
   vector<Vector3f> filtered_point_cloud;
@@ -378,6 +400,5 @@ int main(int argc, char **argv) {
 
 
 	ros::spin();
-
   return 0;
 }
