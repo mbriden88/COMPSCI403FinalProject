@@ -58,7 +58,7 @@ float free_path_coeff = 1; //10
 
 Odometry last_odometry;
 // last known velocities
-Vector2f lastVel(0.0, 0.0);
+// Vector2f lastVel(0.0, 0.0);
 
 // last known person position
 Vector2f lastPersonPosition(0.0, 0.0);
@@ -87,6 +87,48 @@ void depthImageToPointCloud(sensor_msgs::Image image, sensor_msgs::PointCloud &p
       point.y = ((y - py)/fy)*point.z;
       point_cloud.points.push_back(point);
     }
+  }
+}
+
+//*************************************************************************************
+// *************** Function taken from CS403 Assignment5 solution code ****************
+//*************************************************************************************
+void PointCloudToLaserScanHelper(const vector<Vector3f>& point_cloud, vector<float>& ranges){
+  float min_angle = -28.0 * M_PI/ 180;
+  float max_angle = 28.0 * M_PI/ 180;
+  float step_size = 1.0 * M_PI/ 180;
+  float max_range = 4.0;
+  float min_range = 0.8;
+  size_t laser_length = 28 - (-28) + 1;
+
+
+  // Calculate the angle of all the points in the point cloud in the polar coordinate system (projected to the ground plane)
+  vector<float> angles(point_cloud.size());
+  for(size_t i = 0; i < point_cloud.size(); ++i){
+    angles[i] = atan2(point_cloud[i](1), point_cloud[i](0));
+  }
+
+  float ang = min_angle;
+  for(size_t i = 0; i < laser_length; ++i){
+    // Define the query slice for current laser beam
+    float start_range = ang - step_size/2;
+    float end_range = ang + step_size/2;
+
+    // The minimum distance reading in the current slice
+    float min_dist = max_range;
+
+    // Fill the laser scan with exhastive search. A hash table could be used for faster results.
+    for (size_t j = 0; j < point_cloud.size(); ++j){
+      if(angles[j] >= start_range && angles[j] < end_range){
+        float dist = sqrt(point_cloud[j](0) * point_cloud[j](0) + point_cloud[j](1) * point_cloud[j](1));
+        if(dist < max_range && dist > min_range && dist < min_dist){
+          min_dist = dist;
+        }
+      }
+    }
+    ranges.push_back(min_dist);
+    ang += step_size;
+
   }
 }
 
@@ -342,7 +384,7 @@ void changePointCloudToReferenceFrameOfRobot(sensor_msgs::PointCloud point_cloud
   }
 }
 
-void findPerson(){
+void findPerson(Vector2f& person_position){
   //TODO: use RANSAC plane fitting to find person and return point in middle of plane
 }
 
@@ -364,6 +406,47 @@ void PersonFollowerCallback(const sensor_msgs::Image& depth_image){
   // change point cloud to reference frame of robot
   vector<Vector3f> filtered_point_cloud;
   changePointCloudToReferenceFrameOfRobot(point_cloud, filtered_point_cloud);
+
+  // current velocities
+  float v0 = last_odometry.twist.twist.linear.x;
+  float w0 = last_odometry.twist.twist.angular.z;
+  Vector2f V(v0, w0);
+
+  // create dynamic window
+  int win_size = 41;
+  MatrixXf win_v(win_size, win_size);
+  MatrixXf win_w(win_size, win_size);
+  MatrixXf scores(win_size, win_size);
+  MatrixXd is_admissible(win_size, win_size);
+  Vector2f index_best;
+  InitializeDynamicWindow(win_v, win_w, V);
+
+  // get person position
+  Vector2f person_position;
+  findPerson(person_position);
+
+  // get laser scan
+  vector<Vector2f> obstacles;
+  vector<float ranges;
+  PointCloudToLaserScanHelper(filtered_point_cloud, ranges);
+  LaserScanToPoint(ranges, obstacles);
+
+  // get best command
+  GetBestCommand(win_v, win_w, obstacles, scores, is_admissible, index_best, person_position);
+
+  Twist command_vel;
+
+  // make sure a command was returned
+  if (index_best(0) != -1) {
+    command_vel.linear.x = win_v(index_best(0), index_best(1));
+    command_vel.angular.z = win_w(index_best(0), index_best(1));
+  }
+  else {
+    command_vel.linear.x = 0;
+    command_vel.angular.z = 0;
+  }
+
+  velocity_command_publisher_.publish(command_vel);
 }
 
 void OdometryCallback(const nav_msgs::Odometry& odometry) {
@@ -395,6 +478,8 @@ int main(int argc, char **argv) {
 
   ros::ServiceServer service1 = n.advertiseService(
       "/COMPSCI403/GetCommandVel", getBestCommandService);
+
+  velocity_command_publisher_ = n.advertise<geometry_msgs::Twist>("/cmd_vel_mux/input/navi", 1);
 
   ros::Subscriber odometry_subscriber = n.subscribe("/odom", 1, OdometryCallback);
 
