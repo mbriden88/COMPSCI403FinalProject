@@ -1,0 +1,10 @@
+(cl:defpackage final_project-srv
+  (:use )
+  (:export
+   "GETCOMMANDVELSRV"
+   "<GETCOMMANDVELSRV-REQUEST>"
+   "GETCOMMANDVELSRV-REQUEST"
+   "<GETCOMMANDVELSRV-RESPONSE>"
+   "GETCOMMANDVELSRV-RESPONSE"
+  ))
+
